@@ -172,12 +172,12 @@ function Main() {
 			;;
 		ubuntu*)
 			LogMsg "This is Ubuntu"
-			# IBM Platform MPI & Intel MPI do not seem to work. Under investigation.
-			if [[ $mpi_type == "ibm" || $mpi_type == "intel" ]]; then
-				LogErr "Distro '$DISTRO' not supported or not implemented"
-				SetTestStateSkipped
-				exit 0
-			fi
+			# # IBM Platform MPI & Intel MPI do not seem to work. Under investigation.
+			# if [[ $mpi_type == "ibm" || $mpi_type == "intel" ]]; then
+			# 	LogErr "Distro '$DISTRO' not supported or not implemented"
+			# 	SetTestStateSkipped
+			# 	exit 0
+			# fi
 			hpcx_ver="ubuntu"$VERSION_ID
 			LogMsg "Installing required packages ..."
 			install_package "build-essential python-setuptools libibverbs-dev bison flex ibverbs-utils net-tools"
