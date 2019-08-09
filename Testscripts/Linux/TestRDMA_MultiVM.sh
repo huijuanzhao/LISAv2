@@ -443,6 +443,7 @@ function Main() {
 	# It's safer to obtain pkeys in the test script because some distros
 	# may require a reboot after the IB setup is completed
 	# Find the correct partition key for IB communicating with other VM
+	# MPI_IB_PKEY is needed for SR-IOV only
 	if [ -z ${MPI_IB_PKEY+x} ]; then
 		firstkey=$(cat /sys/class/infiniband/mlx5_0/ports/1/pkeys/0)
 		LogMsg "Getting the first key $firstkey"

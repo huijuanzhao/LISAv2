@@ -180,7 +180,8 @@ function Main() {
 			# fi
 			hpcx_ver="ubuntu"$VERSION_ID
 			LogMsg "Installing required packages ..."
-			install_package "build-essential python-setuptools libibverbs-dev bison flex ibverbs-utils net-tools"
+			# libmlx4-1 is needed for ND testing.
+			install_package "build-essential python-setuptools libibverbs-dev libibverbs1 bison flex ibverbs-utils net-tools libdapl2 libmlx4-1"
 			;;
 		*)
 			LogErr "MPI type $mpi_type does not support on '$DISTRO' or not implement"
@@ -237,7 +238,7 @@ function Main() {
 		make -j $(nproc)
 		if [ $? -ne 0 ]; then
 			pkey=$(cat /sys/class/infiniband/*/ports/1/pkeys/0)
-			export MPI_IB_PKEY=${pkey}
+			export MPI_IB_PKEY=${pkey}									# This exists in SR-IOV only not ND
 			make -j $(nproc)
 		fi
 		LogMsg "Ping-pong compilation completed"
@@ -410,26 +411,17 @@ function Main() {
 		LogMsg "Completed MVAPICH MPI installation"
 	fi
 
-	# Install stable WALA agent and apply 3 patches
-	# This is customized part for RHEL 7.5 Standard_HB60rs
-	cd ~
-
-	LogMsg "Download WALA agent repo and checkout tag 2.2.35"
-	git clone --branch v2.2.35 $walaagent_repo
+	# WALinuxAgent is configured in order to enable RDMA and its driver.
+	LogMsg "Eanble EnableRDMA parameter in waagent.config"
+	sed -i -e 's/# OS.EnableRDMA=y/OS.EnableRDMA=y/g' /etc/waagent.conf
 	Verify_Result
 
-	cd WALinuxAgent
-
-	LogMsg "Eanble EnableRDMA parameter in waagent.config"
-	sed -i -e 's/# OS.EnableRDMA=y/OS.EnableRDMA=y/g' config/waagent.conf
+	LogMsg "Eanble UpdateRdmaDriver parameter in waagent.config"
+	sed -i -e 's/# OS.UpdateRdmaDriver=y/OS.UpdateRdmaDriver=y/g' /etc/waagent.conf
 	Verify_Result
 
 	LogMsg "Disable AutoUpdate parameter in waagent.config"
-	sed -i -e 's/AutoUpdate.Enabled=y/# AutoUpdate.Enabled=y/g' config/waagent.conf
-	Verify_Result
-
-	LogMsg "Compile WALA"
-	python setup.py install --register-service  --force
+	sed -i -e 's/AutoUpdate.Enabled=y/# AutoUpdate.Enabled=y/g' /etc/waagent.conf
 	Verify_Result
 
 	LogMsg "Restart waagent service"
@@ -439,6 +431,19 @@ function Main() {
 		service waagent restart
 	fi
 	Verify_Result
+
+	# These are keyworks we are looking for
+	# REcommend to check those strings availability every 6 months
+	declare -a keywdstr=("Daemon RDMA capabilities are enabled in configuration" "Daemon Found RDMA details. IPv4=" "RDMA: DAPL configuration is updated" "RDMA: device is set up")
+	LogMsg "Searching a few keywords in /var/log/waagent.log"
+
+	for kstr in "${keywdstr[@]}"
+	do
+		LogMsg "\tLooking for $kstr"
+		grep "$kstr" /var/log/waagent.log
+		Verify_Result
+	done
+
 	cd ~
 	LogMsg "Proceeding Intel MPI Benchmark test installation"
 
